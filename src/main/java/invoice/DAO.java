@@ -76,10 +76,48 @@ public class DAO {
 	 * taille
 	 * @throws java.lang.Exception si la transaction a échoué
 	 */
-	public void createInvoice(CustomerEntity customer, int[] productIDs, int[] quantities)
-		throws Exception {
-		throw new UnsupportedOperationException("Pas encore implémenté");
-	}
+	public void createInvoice(CustomerEntity customer, int[] productIDs, int[] quantities) throws Exception {
+            String requete1="INSERT INTO Invoice(CustomerID,Total) VALUES (?,0.0f)";
+            String requete2="INSERT INTO Item(InvoiceID,ProductID,Quantity,Cost) VALUES (?,?,?,?)";
+            String requete3="SELECT Max(ID) FROM Invoice";
+            String requete4="SELECT Price FROM Product WHERE ID = ?";
+            
+            int idCustomer=customer.getCustomerId();
+            int numFacture=0;
+            int Total=0;
+            
+            try (Connection connection = myDataSource.getConnection();)
+            {
+                 PreparedStatement statement1 = connection.prepareStatement(requete1);
+                 PreparedStatement statement2 = connection.prepareStatement(requete2);
+		 PreparedStatement statement3 = connection.prepareStatement(requete3);
+                 PreparedStatement statement4 = connection.prepareStatement(requete4);
+
+                try (ResultSet resultSet = statement3.executeQuery())
+                {
+                    numFacture=resultSet.getInt("Max(ID)");
+                }
+                
+                statement1.setInt(1,idCustomer);
+                if(productIDs.length==quantities.length){
+                    for(int i=0;i<productIDs.length;i++){
+                        statement2.setInt(1,numFacture);
+                        statement2.setInt(2,i);
+                        statement2.setInt(3,quantities[i]);
+                        statement4.setInt(4,productIDs[i]);
+                        try (ResultSet resultSet = statement4.executeQuery())
+                        {
+                            statement2.setInt(4,quantities[i]*resultSet.getInt("Price"));
+                            Total+=quantities[i]*resultSet.getInt("Price");
+                        }
+                        statement1.setFloat(2,Total);
+                    }
+                }
+                else{
+                    throw new Exception("Tout les produits n'ont pas de quantité attitrée");
+                }
+            }
+        }
 
 	/**
 	 *
